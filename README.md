@@ -18,7 +18,7 @@ Do CT scan intensity features (i.e. Mean Hounsfield Unit (HU), Asymmetry Index) 
 The dataset we've selected is: Computed Tomography Images for Intracranial Hemorrhage Detection and Segmentation (v1.3.1), published by Murtadha Hssayeni on PhysioNet (2020). https://physionet.org/content/ct-ich/1.3.1/ 
 
 ### Biggest Uncertainty
-Our dataset of choice is restricted access, however getting availability is fairly simple (make an account and sign the data use agreement). The small sample size (82 total, 36 hemmorhage-positive and 46 hemmorhage-negative) could limit statistical power.
+Our dataset of choice is restricted access, however getting availability is fairly simple (make an account and sign the data use agreement). The small sample size (82 total, 36 hemorrhage-positive and 46 hemorrhage-negative) could limit statistical power.
 
 ## Candidate Project 2
 ### Biomedical Problem
