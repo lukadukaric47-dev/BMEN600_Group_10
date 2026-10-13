@@ -1,0 +1,131 @@
+"""Preliminary-results figure + tables for Section 5.
+"""
+import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import stats
+from sklearn.metrics import roc_auc_score
+
+ml = Path(sys.argv[1])
+out = Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+
+pat = pd.read_csv(ml / "4_Patient-level CT feature extraction" / "ml_features_ct_only.csv")
+sl = pd.read_csv(ml / "6_Slice-level feature extraction" / "slice_level_ct_features.csv")
+
+pat["Group"] = pat["ICH"].map({0: "Control", 1: "ICH"})
+pat["Sex"] = pat["Sex_binary"].map({0: "Male", 1: "Female"})
+
+# ---------- Table 1: group balance ----------
+t1 = pd.crosstab(pat["Sex"], pat["Group"], margins=True)
+t1.to_csv(out / "table1_sex_by_group.csv")
+print(t1)
+
+# ---------- Patient-level comparison (one row per patient) ----------
+a = pat.loc[pat.ICH == 0, "Mean_Brain_HU"]
+b = pat.loc[pat.ICH == 1, "Mean_Brain_HU"]
+auc_pat = roc_auc_score(pat.ICH, pat.Mean_Brain_HU)
+p_pat = stats.mannwhitneyu(b, a).pvalue
+print(f"Patient-level mean HU: control median {a.median():.1f}, ICH median {b.median():.1f}, "
+      f"AUC {auc_pat:.2f}, Mann-Whitney p {p_pat:.2f}")
+
+# ---------- Within-patient comparison (ICH patients, hemorrhage vs normal slices) ----------
+feat = "Fraction_Above_50HU"
+ich = sl[sl.Patient_ICH == 1]
+paired = ich.groupby(["Patient_ID", "Slice_ICH"])[feat].mean().unstack().dropna()
+paired.columns = ["Normal", "Hemorrhage"]
+p_pair = stats.wilcoxon(paired["Hemorrhage"] - paired["Normal"]).pvalue
+n_lower = int((paired["Hemorrhage"] < paired["Normal"]).sum())
+print(f"Paired ({len(paired)} patients): hemorrhage slices lower in {n_lower}, Wilcoxon p {p_pair:.1e}")
+
+# ---------- Slice-level baseline: how much does brain-region size alone explain? ----------
+auc_area = roc_auc_score(sl.Slice_ICH, sl.Brain_Voxel_Count)
+print(f"Slice-level AUC from brain-region size alone: {auc_area:.2f}")
+
+# ---------- Counts and medians cited in the text ----------
+med_haem = sl.loc[sl.Slice_ICH == 1, "Brain_Voxel_Count"].median()
+med_norm = sl.loc[sl.Slice_ICH == 0, "Brain_Voxel_Count"].median()
+print(f"Slices: {len(sl)} usable, {int(sl.Slice_ICH.sum())} hemorrhage, "
+      f"{int((sl.Slice_ICH == 0).sum())} normal; patients: {sl.Patient_ID.nunique()}")
+print(f"Median brain pixels per slice: hemorrhage {med_haem:.0f}, normal {med_norm:.0f}")
+
+summary = pd.DataFrame([
+    ("Panel A: median mean HU, control", a.median()),
+    ("Panel A: median mean HU, ICH", b.median()),
+    ("Panel A: ROC-AUC (mean HU vs ICH)", auc_pat),
+    ("Panel A: Mann-Whitney p", p_pat),
+    ("Panel B: patients compared", len(paired)),
+    ("Panel B: patients with lower fraction >50 HU in hemorrhage slices", n_lower),
+    ("Panel B: Wilcoxon p", p_pair),
+    ("Panel C: median brain pixels, hemorrhage slices", med_haem),
+    ("Panel C: median brain pixels, normal slices", med_norm),
+    ("Panel C: slice-level ROC-AUC from brain size alone", auc_area),
+], columns=["quantity", "value"])
+summary.to_csv(out / "stats_summary.csv", index=False)
+
+# ---------- Figure ----------
+BLUE, ORANGE, GRAY = "#2a78d6", "#eb6834", "#8a8984"
+INK, MUTED, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
+plt.rcParams.update({"font.size": 10, "axes.edgecolor": GRID, "axes.labelcolor": MUTED,
+                     "xtick.color": MUTED, "ytick.color": MUTED, "text.color": INK})
+rng = np.random.default_rng(1)
+
+
+def style(ax, title, ylab):
+    ax.set_title(title, loc="left", fontsize=10.5, fontweight="bold")
+    ax.set_ylabel(ylab)
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+
+
+def box(ax, x, v, colr):
+    ax.boxplot(v, positions=[x], widths=0.45, showfliers=False,
+               boxprops=dict(color=colr, linewidth=1.5), whiskerprops=dict(color=colr),
+               capprops=dict(color=colr), medianprops=dict(color=colr, linewidth=2.5))
+
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12.5, 4.3))
+
+# A: patient-level mean HU
+for i, (g, colr) in enumerate([("Control", BLUE), ("ICH", ORANGE)]):
+    v = pat.loc[pat.Group == g, "Mean_Brain_HU"].values
+    box(ax1, i, v, colr)
+    ax1.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=22, color=colr,
+                edgecolor=SURF, linewidth=1, zorder=3)
+ax1.set_xticks([0, 1], ["Control\n(n=25)", "ICH\n(n=25)"])
+style(ax1, "A. Whole-brain mean HU, per patient", "Mean HU")
+ax1.text(0.03, 0.97, f"AUC {auc_pat:.2f}, p = {p_pat:.2f}", transform=ax1.transAxes,
+         va="top", fontsize=9, color=MUTED)
+
+# B: paired, within ICH patients
+for _, r in paired.iterrows():
+    ax2.plot([0, 1], [r["Normal"], r["Hemorrhage"]], color=GRAY, alpha=0.5, lw=1, zorder=2)
+ax2.scatter(np.zeros(len(paired)), paired["Normal"], s=22, color=GRAY, edgecolor=SURF, zorder=3)
+ax2.scatter(np.ones(len(paired)), paired["Hemorrhage"], s=22, color=ORANGE, edgecolor=SURF, zorder=3)
+ax2.set_xticks([0, 1], ["Normal slices", "Hemorrhage slices"])
+ax2.set_xlim(-0.35, 1.35)
+style(ax2, "B. Same patients, hemorrhage vs normal slices", "Fraction of brain voxels > 50 HU")
+ax2.text(0.03, 0.97, f"Lower in {n_lower}/{len(paired)} patients, p < 0.001", transform=ax2.transAxes,
+         va="top", fontsize=9, color=MUTED)
+
+# C: brain-region size by slice label
+for i, (lab, colr) in enumerate([(0, GRAY), (1, ORANGE)]):
+    box(ax3, i, sl.loc[sl.Slice_ICH == lab, "Brain_Voxel_Count"].values / 1000, colr)
+ax3.set_xticks([0, 1], [f"Normal slices\n(n={int((sl.Slice_ICH == 0).sum())})",
+                        f"Hemorrhage slices\n(n={int(sl.Slice_ICH.sum())})"])
+style(ax3, "C. Brain-region size per slice", "Brain pixels per slice (thousands)")
+ax3.text(0.03, 0.97, f"Size alone: slice AUC {auc_area:.2f}", transform=ax3.transAxes,
+         va="top", fontsize=9, color=MUTED)
+
+for ax in (ax1, ax2, ax3):          # headroom so the annotation never sits on data
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi + 0.16 * (hi - lo))
+
+fig.tight_layout()
+fig.savefig(out / "fig_prelim_features.png", dpi=200, facecolor=SURF)
+
