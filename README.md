@@ -20,6 +20,18 @@ The dataset we've selected is: Computed Tomography Images for Intracranial Hemor
 ### Biggest Uncertainty
 Our dataset of choice is restricted access, however getting availability is fairly simple (make an account and sign the data use agreement). The small sample size (82 total, 36 hemorrhage-positive and 46 hemorrhage-negative) could limit statistical power.
 
+2. Repository map (what to open)
+Path	What it does	Type
+ExtractBrainFeaturesPatient71.py	Builds a brain mask for one patient (patient 71), computes whole-brain HU, left/right mean HU and Asymmetry Index, and shows a 4-panel figure. Demonstration/test of the feature method.	Code
+ExtractHemorrhageFeatures.py	Batch script. Reads patient demographics, CT and mask files, and writes patient_table_with_features.csv (ICH label, sex, age, hemorrhage volume, slice count, HU statistics).	Code
+Figure Code +Stats/	[DESCRIBE: which scripts make which figure/statistic, e.g. ANOVA]	Code
+ML.zip	[DESCRIBE contents, or unzip into an ml/ folder]	Code
+patient_table_with_features.csv	Output of ExtractHemorrhageFeatures.py.	Derived data
+hemorrhage_diagnosis_raw_ct.csv	[DESCRIBE: source and purpose]	[Input/derived]
+mask_label_validation_patients.csv	[DESCRIBE: source and purpose]	[Input/derived]
+LICENSE	MIT license (code only; the dataset has its own terms, see Section 4).	–
+
+
 ## Candidate Project 2
 ### Biomedical Problem
 Aging is associated with changes in autonomic cardiovascular regulation, which can affect heart-rate variability (HRV). Understanding how HRV changes across the lifespan may help characterize normal cardiovascular aging and provide a baseline for identifying abnormal autonomic function.
