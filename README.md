@@ -20,7 +20,7 @@ The dataset we've selected is: Computed Tomography Images for Intracranial Hemor
 ### Biggest Uncertainty
 Our dataset of choice is restricted access, however getting availability is fairly simple (make an account and sign the data use agreement). The small sample size (82 total, 36 hemorrhage-positive and 46 hemorrhage-negative) could limit statistical power.
 
-2. Repository Map (What to Open)
+### 2. Repository Map (What to Open)
 ExtractBrainFeaturesPatient71.py
 Builds a brain mask for patient 71, computes whole-brain HU, left/right mean HU, and the Asymmetry Index, and displays a four-panel figure. This script serves as a demonstration and test of the feature extraction method.
 
